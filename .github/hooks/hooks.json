@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "type": "command",
+        "bash": "node ./scripts/block-env.mjs",
+        "powershell": "node ./scripts/block-env.mjs",
+        "cwd": ".",
+        "timeoutSec": 10
+      }
+    ],
+    "postToolUse": [
+      {
+        "type": "command",
+        "bash": "node ./scripts/prettier-format.mjs",
+        "powershell": "node ./scripts/prettier-format.mjs",
+        "cwd": ".",
+        "timeoutSec": 30
+      }
+    ]
+  }
+}

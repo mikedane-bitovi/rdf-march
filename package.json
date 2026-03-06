@@ -1,0 +1,17 @@
+{
+  "name": "rdf-march",
+  "version": "1.0.0",
+  "description": "A simple Node.js calculator app",
+  "main": "src/calculator.js",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}
