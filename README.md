@@ -1,5 +1,8 @@
 # RDF March
 
+Slides:
+https://docs.google.com/presentation/d/1aPjtm-9iY18Cq7tvBP3AeJoWjifhM7pmuufoDEyyBJI/edit?usp=sharing
+
 A simple Node.js calculator application with Jest tests.
 
 ## Installation
