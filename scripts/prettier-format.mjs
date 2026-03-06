@@ -39,13 +39,10 @@ for await (const chunk of process.stdin) chunks.push(chunk);
 const input = JSON.parse(Buffer.concat(chunks).toString('utf8'));
 
 const toolName = input?.tool_name ?? '';
-const filePath = input?.tool_input?.path ?? 
-                 input?.tool_input?.file_path ?? 
-                 input?.tool_input?.filePath ?? '';
+const timestamp = new Date().toISOString();
 
 // Log that hook was triggered
-const timestamp = new Date().toISOString();
-appendFileSync(LOG_FILE, `\n[${timestamp}] PostToolUse triggered - tool: ${toolName}, file: ${filePath}\n`);
+appendFileSync(LOG_FILE, `\n[${timestamp}] PostToolUse triggered - tool: ${toolName}\n`);
 
 // Only run Prettier if the agent was editing/writing a file
 if (!EDIT_TOOLS.some(t => toolName.includes(t))) {
@@ -53,19 +50,47 @@ if (!EDIT_TOOLS.some(t => toolName.includes(t))) {
   process.exit(0);
 }
 
-// Skip if there's no file path, the file doesn't exist, or Prettier doesn't support it
-if (!filePath || !existsSync(filePath) || !SUPPORTED_EXTENSIONS.test(filePath)) {
-  appendFileSync(LOG_FILE, `[${timestamp}] Skipped - file not found or not supported by Prettier\n`);
+// Extract file paths based on tool type
+let filePaths = [];
+if (toolName === 'multi_replace_string_in_file') {
+  // Handle multi_replace_string_in_file which has an array of replacements
+  const replacements = input?.tool_input?.replacements ?? [];
+  filePaths = replacements.map(r => r.filePath).filter(Boolean);
+} else {
+  // Handle other edit tools
+  const filePath = input?.tool_input?.path ?? 
+                   input?.tool_input?.file_path ?? 
+                   input?.tool_input?.filePath ?? '';
+  if (filePath) filePaths = [filePath];
+}
+
+const filePathsStr = filePaths.join(', ');
+appendFileSync(LOG_FILE, `[${timestamp}] Files to format: ${filePathsStr || 'none'}\n`);
+
+if (filePaths.length === 0) {
+  appendFileSync(LOG_FILE, `[${timestamp}] Skipped - no files found\n`);
   process.exit(0);
 }
 
-console.log(`\n✨ Formatting ${filePath} with Prettier...\n`);
-appendFileSync(LOG_FILE, `[${timestamp}] Running Prettier on ${filePath}\n`);
+// Skip if there are no files, the files don't exist, or Prettier doesn't support them
+const supportedFiles = filePaths.filter(filePath => 
+  filePath && existsSync(filePath) && SUPPORTED_EXTENSIONS.test(filePath)
+);
 
-// Run Prettier on the file the agent just edited
+if (supportedFiles.length === 0) {
+  appendFileSync(LOG_FILE, `[${timestamp}] Skipped - no supported files found\n`);
+  process.exit(0);
+}
+
+console.log(`\n✨ Formatting ${supportedFiles.length} file(s) with Prettier...\n`);
+appendFileSync(LOG_FILE, `[${timestamp}] Running Prettier on ${supportedFiles.length} file(s)\n`);
+
+// Run Prettier on each file the agent just edited
 try {
-  execSync(`npx prettier --write "${filePath}"`, { stdio: 'inherit' });
-  console.log('\n✅ File formatted!\n');
+  for (const filePath of supportedFiles) {
+    execSync(`npx prettier --write "${filePath}"`, { stdio: 'inherit' });
+  }
+  console.log('\n✅ Files formatted!\n');
   appendFileSync(LOG_FILE, `[${timestamp}] ✅ Prettier completed\n`);
 } catch (error) {
   console.log('\n❌ Prettier failed - check output above\n');
@@ -73,8 +98,9 @@ try {
   // Don't crash the agent session if Prettier fails
 }
 
-// Now run tests if it's a source file
-if (filePath.includes('src/')) {
+// Now run tests if any file is a source file
+const srcFiles = supportedFiles.filter(f => f.includes('src/'));
+if (srcFiles.length > 0) {
   console.log('\n🧪 Running tests...\n');
   appendFileSync(LOG_FILE, `[${timestamp}] Running tests\n`);
   
