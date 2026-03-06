@@ -1,1 +1,1 @@
-Whenever you reply always start all responses with an emoji.
+Whenever you reply always start all responses with a 🤖 emoji.
